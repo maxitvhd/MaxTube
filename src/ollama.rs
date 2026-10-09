@@ -5,6 +5,7 @@ use serde_json::json;
 #[derive(Debug, Deserialize)]
 struct GenerateResponse {
     response: Option<String>,
+    thinking: Option<String>,
     error: Option<String>,
 }
 
@@ -59,6 +60,7 @@ pub fn generate(base_url: &str, model: &str, prompt: &str) -> Result<String> {
         "model": model,
         "prompt": prompt,
         "stream": false,
+        "think": false,
         "options": { "temperature": 0.7 }
     });
     let resp = client()
@@ -70,10 +72,16 @@ pub fn generate(base_url: &str, model: &str, prompt: &str) -> Result<String> {
     if let Some(err) = parsed.error {
         bail!("Ollama retornou erro: {}", err);
     }
-    let text = parsed
-        .response
-        .ok_or_else(|| anyhow!("Ollama nao retornou texto"))?;
-    Ok(clean_title(&text))
+    // Modelos com "thinking" as vezes deixam response vazio e o texto no thinking.
+    let raw = match parsed.response {
+        Some(r) if !r.trim().is_empty() => r,
+        _ => parsed.thinking.unwrap_or_default(),
+    };
+    let text = clean_title(&raw);
+    if text.is_empty() {
+        bail!("Ollama nao retornou texto");
+    }
+    Ok(text)
 }
 
 /// Limpa a saida do modelo: remove aspas, prefixos e quebras de linha.

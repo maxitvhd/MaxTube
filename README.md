@@ -71,8 +71,8 @@ vontade. Placeholders disponíveis: `{{title}}` e `{{description}}`.
 `config.toml` (criado automaticamente na primeira execução):
 
 ```toml
-model = "qwen2.5:7b"
-ollama_url = "http://127.0.0.1:11434"
+model = "qwen3.5:4b"
+ollama_url = "http://192.168.1.23:11434"
 prompt_file = "prompt.md"
 client_secret = ".secrets/client_secret.json"
 token = ".secrets/token.json"
@@ -80,6 +80,13 @@ data_dir = "data"
 ```
 
 Trocar de modelo é só alterar `model` aqui ou usar `--model nome`.
+
+### Usando um Ollama remoto
+
+O `ollama_url` pode apontar para outra máquina da sua rede (ex.:
+`http://192.168.1.23:11434`). O servidor precisa aceitar conexões externas
+(`OLLAMA_HOST=0.0.0.0 ollama serve`). Modelos com "thinking" (ex.: `qwen3.5`)
+são suportados — o `think` é desativado automaticamente.
 
 ## Cota da API
 
