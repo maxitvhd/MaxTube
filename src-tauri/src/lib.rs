@@ -199,6 +199,7 @@ async fn generate(
                         video_id: v.id.clone(),
                         original_title: v.title.clone(),
                         proposed_title: title,
+                        proposed_description: String::new(),
                         status: Status::Pending,
                     });
                     let _ = store::save_proposals(&cfg, &proposals);
@@ -215,11 +216,19 @@ async fn generate(
 }
 
 #[tauri::command]
-fn edit_proposal(state: State<'_, AppState>, video_id: String, title: String) -> Result<(), String> {
+fn edit_proposal(
+    state: State<'_, AppState>,
+    video_id: String,
+    title: String,
+    description: Option<String>,
+) -> Result<(), String> {
     let cfg = &state.cfg;
     let mut proposals = store::load_proposals(cfg).map_err(|e| format!("{:#}", e))?;
     if let Some(p) = proposals.iter_mut().find(|p| p.video_id == video_id) {
         p.proposed_title = title.chars().take(100).collect();
+        if let Some(d) = description {
+            p.proposed_description = d.clone();
+        }
     }
     store::save_proposals(cfg, &proposals).map_err(|e| format!("{:#}", e))
 }

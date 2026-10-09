@@ -16,6 +16,7 @@ export interface Proposal {
   video_id: string;
   original_title: string;
   proposed_title: string;
+  proposed_description: string;
   status: Status;
 }
 
@@ -44,8 +45,8 @@ export const api = {
   pull: (limit: number | null) => invoke<number>("pull", { limit }),
   generate: (model: string | null, redo: boolean) =>
     invoke<Proposal[]>("generate", { model, redo }),
-  editProposal: (videoId: string, title: string) =>
-    invoke<void>("edit_proposal", { videoId, title }),
+  editProposal: (videoId: string, title: string, description?: string) =>
+    invoke<void>("edit_proposal", { videoId, title, description: description ?? null }),
   setStatus: (videoId: string, status: Status) =>
     invoke<void>("set_status", { videoId, status }),
   apply: () => invoke<ApplyResult>("apply"),

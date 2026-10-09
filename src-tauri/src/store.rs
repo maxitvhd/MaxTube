@@ -59,6 +59,8 @@ pub struct Proposal {
     pub original_title: String,
     pub proposed_title: String,
     #[serde(default)]
+    pub proposed_description: String,
+    #[serde(default)]
     pub status: Status,
 }
 
