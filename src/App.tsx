@@ -13,7 +13,7 @@ export default function App() {
   const [settings, setSettings] = useState(false);
   const [limit, setLimit] = useState<string>("200");
   const [redo, setRedo] = useState(false);
-  const [filter, setFilter] = useState<"all" | Status>("all");
+  const [filter, setFilter] = useState<"all" | "upload" | "live" | "other" | Status>("all");
 
   const refresh = useCallback(async () => {
     try {
@@ -96,7 +96,15 @@ export default function App() {
     }
   };
 
-  const visible = proposals.filter((p) => filter === "all" || p.status === filter);
+  const visible = proposals.filter((p) => {
+    if (filter === "all" || filter === "pending" || filter === "approved" || filter === "rejected" || filter === "applied") {
+      return filter === "all" || p.status === filter;
+    }
+    const v = videos.find((x) => x.id === p.video_id);
+    if (filter === "upload") return v?.kind === "upload" || v?.kind === "";
+    if (filter === "live") return v?.kind === "live";
+    return v?.kind !== "upload" && v?.kind !== "live" && v?.kind !== "";
+  });
   const approvedCount = proposals.filter((p) => p.status === "approved").length;
 
   return (
@@ -150,14 +158,23 @@ export default function App() {
       {msg && <div className={`banner ${msg.kind}`}>{msg.text}</div>}
 
       <nav className="filters">
-        {(["all", "pending", "approved", "rejected", "applied"] as const).map((f) => (
+        {([
+          "all",
+          "pending",
+          "approved",
+          "rejected",
+          "applied",
+          "upload",
+          "live",
+          "other",
+        ] as const).map((f) => (
           <button
             key={f}
             className={filter === f ? "tab active" : "tab"}
             onClick={() => setFilter(f)}
           >
-            {labelFor(f)}
-            {f !== "all" && ` (${proposals.filter((p) => p.status === f).length})`}
+            {labelForFilter(f)}
+            {countFor(f, proposals, videos) > 0 ? ` (${countFor(f, proposals, videos)})` : ""}
           </button>
         ))}
       </nav>
@@ -172,6 +189,11 @@ export default function App() {
                 <div className="original">
                   <span className="tag">Atual</span>
                   <span>{p.original_title}</span>
+                  {videos.find((x) => x.id === p.video_id)?.kind && (
+                    <span className="meta">
+                      tipo: {videos.find((x) => x.id === p.video_id)!.kind}
+                    </span>
+                  )}
                 </div>
                 <div className="proposed">
                   <span className="tag">Sugerido</span>
@@ -217,14 +239,34 @@ export default function App() {
   );
 }
 
-function labelFor(f: "all" | Status): string {
+function labelForFilter(f: any): string {
   return {
     all: "Todas",
     pending: "Pendentes",
     approved: "Aprovadas",
     rejected: "Rejeitadas",
     applied: "Aplicadas",
-  }[f];
+    upload: "Vídeos",
+    live: "Ao Vivo",
+    other: "Outros",
+  }[f] as string;
+}
+
+function countFor(
+  f: any,
+  proposals: Proposal[],
+  videos: Video[],
+): number {
+  if (f === "all") return proposals.length;
+  if (f === "pending" || f === "approved" || f === "rejected" || f === "applied") {
+    return proposals.filter((p) => p.status === f).length;
+  }
+  return proposals.filter((p) => {
+    const v = videos.find((x) => x.id === p.video_id);
+    if (f === "upload") return v?.kind === "upload" || v?.kind === "";
+    if (f === "live") return v?.kind === "live";
+    return v?.kind !== "upload" && v?.kind !== "live" && v?.kind !== "";
+  }).length;
 }
 
 function Pill({ ok, label }: { ok?: boolean; label: string }) {

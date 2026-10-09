@@ -258,11 +258,10 @@ main {
   gap: 5px;
   min-width: 0;
 }
-.original span:last-child {
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.original span.meta {
+  color: #777;
+  font-size: 11px;
+  margin-top: 2px;
 }
 .tag {
   font-size: 10px;

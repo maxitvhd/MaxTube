@@ -9,6 +9,7 @@ export interface Video {
   category_id?: string | null;
   published_at?: string | null;
   tags?: string[] | null;
+  kind: string;
 }
 
 export interface Proposal {
