@@ -121,10 +121,10 @@ export default function App() {
           Limite
           <input
             className="num"
-            value={limit}
-            onChange={(e) => setLimit(e.target.value)}
-            placeholder="todos"
-          />
+          value={limit}
+          onChange={(e) => setLimit(e.target.value)}
+          placeholder="ex.: 500 ou vazio (todos)"
+        />
         </label>
         <button onClick={handlePull} disabled={!!busy || !status?.logged_in}>
           Puxar vídeos
