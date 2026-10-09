@@ -5,7 +5,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::config::Config;
 
@@ -211,8 +211,22 @@ pub fn login(cfg: &Config) -> Result<Token> {
 }
 
 fn wait_for_code(listener: &TcpListener) -> Result<String> {
-    for _ in 0..20 {
-        let (mut stream, _) = listener.accept().context("falha ao receber callback")?;
+    // Nunca fica preso para sempre: no maximo ~3 minutos.
+    listener.set_nonblocking(true).ok();
+    let deadline = Instant::now() + Duration::from_secs(180);
+    loop {
+        if Instant::now() > deadline {
+            bail!("tempo esgotado esperando o callback do Google (tente de novo)");
+        }
+        let (mut stream, _) = match listener.accept() {
+            Ok(pair) => pair,
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(200));
+                continue;
+            }
+            Err(e) => return Err(e).context("falha ao receber callback"),
+        };
+        let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
         let mut buf = [0u8; 8192];
         let n = stream.read(&mut buf).unwrap_or(0);
         let req = String::from_utf8_lossy(&buf[..n]);
@@ -252,7 +266,6 @@ fn wait_for_code(listener: &TcpListener) -> Result<String> {
         }
         let _ = respond(&mut stream, 404, "Requisicao inesperada.");
     }
-    bail!("tempo esgotado esperando o callback do Google")
 }
 
 fn respond(stream: &mut std::net::TcpStream, status: u16, msg: &str) -> std::io::Result<()> {

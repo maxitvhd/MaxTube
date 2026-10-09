@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::time::Duration;
 
 use crate::auth;
 use crate::config::Config;
@@ -63,8 +64,16 @@ pub fn run(cfg: &Config) -> Result<()> {
     for stream in listener.incoming() {
         match stream {
             Ok(mut s) => {
-                if let Err(e) = handle(cfg, &mut s) {
-                    eprintln!("painel: {}", e);
+                let _ = s.set_read_timeout(Some(Duration::from_secs(30)));
+                let _ = s.set_write_timeout(Some(Duration::from_secs(30)));
+                // Uma requisicao com problema nunca derruba o servidor.
+                let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    if let Err(e) = handle(cfg, &mut s) {
+                        eprintln!("painel: {}", e);
+                    }
+                }));
+                if res.is_err() {
+                    eprintln!("painel: erro inesperado numa requisicao (servidor segue no ar)");
                 }
             }
             Err(_) => continue,
