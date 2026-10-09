@@ -1,0 +1,97 @@
+# MaxTube
+
+Gerencie os títulos dos vídeos do seu canal do YouTube usando **IA local (Ollama)**.
+
+O fluxo é: **puxar** os vídeos → **gerar** sugestões de título com o modelo local →
+**revisar** uma por uma (aprovar/editar/rejeitar) → **aplicar** no YouTube.
+
+Nada de títulos é enviado para serviços de IA na nuvem: tudo roda no seu Ollama.
+
+## Requisitos
+
+- Rust (stable) — https://rustup.rs
+- Ollama — https://ollama.com
+- Conta do YouTube (canal) e acesso ao Google Cloud Console
+
+## 1. Baixe um modelo no Ollama
+
+```bash
+ollama pull qwen2.5:7b
+# ou um mais leve para máquinas com pouca RAM:
+# ollama pull qwen2.5:3b
+```
+
+Garanta que o Ollama está rodando (abra o app ou `ollama serve`).
+
+## 2. Configure o acesso ao YouTube (Google Cloud)
+
+1. Acesse https://console.cloud.google.com e crie um projeto.
+2. **APIs e serviços → Biblioteca** → pesquise **YouTube Data API v3** → **Ativar**.
+3. **APIs e serviços → Tela de permissão OAuth** → configure como **Externo** e
+   adicione a sua conta em **Usuários de teste**.
+4. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth**:
+   - Tipo: **App para computador (Desktop app)**
+   - Baixe o JSON e salve como `.secrets/client_secret.json` na raiz do projeto.
+5. Faça login pela ferramenta:
+
+```bash
+cargo run -- auth
+```
+
+O navegador abrirá para você autorizar. O token fica salvo em `.secrets/token.json`
+(renovado automaticamente).
+
+## 3. Uso
+
+```bash
+# Fluxo completo (puxa, gera, revisa e aplica)
+cargo run -- run --limit 20
+
+# Ou passo a passo:
+cargo run -- pull --limit 20     # baixa os vídeos para data/videos.json
+cargo run -- generate            # cria sugestões com o Ollama (data/proposals.json)
+cargo run -- review              # revisão interativa, uma por uma
+cargo run -- apply               # envia os títulos aprovados ao YouTube
+cargo run -- status              # mostra o estado atual
+```
+
+Durante a revisão:
+
+```
+[a]provar  [e]ditar  [r]ejeitar  [s]pular  [A]provar todos restantes  [q]sair
+```
+
+## Editar o prompt principal
+
+O prompt enviado ao modelo fica em **[`prompt.md`](prompt.md)** — edite o arquivo à
+vontade. Placeholders disponíveis: `{{title}}` e `{{description}}`.
+
+## Configuração
+
+`config.toml` (criado automaticamente na primeira execução):
+
+```toml
+model = "qwen2.5:7b"
+ollama_url = "http://127.0.0.1:11434"
+prompt_file = "prompt.md"
+client_secret = ".secrets/client_secret.json"
+token = ".secrets/token.json"
+data_dir = "data"
+```
+
+Trocar de modelo é só alterar `model` aqui ou usar `--model nome`.
+
+## Cota da API
+
+A YouTube Data API tem cota diária de **10.000 unidades**. Cada atualização de
+título custa ~50 unidades, então dá para alterar cerca de **200 vídeos por dia**
+sem problemas.
+
+## Segurança
+
+`.secrets/` e `data/` são ignorados pelo git. **Nunca** comite o
+`client_secret.json` nem o `token.json`.
+
+## Licença
+
+MIT
