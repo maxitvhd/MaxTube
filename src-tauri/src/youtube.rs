@@ -71,8 +71,9 @@ struct VideosResponse {
 struct VideoResource {
     id: String,
     snippet: VideoSnippet,
-    #[serde(rename = "liveBroadcastContent", default)]
-    live_broadcast_content: Option<String>,
+    // so vem preenchido em videos que foram (ou vao ser) transmissao ao vivo
+    #[serde(default)]
+    liveStreamingDetails: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -86,6 +87,9 @@ struct VideoSnippet {
     publishedAt: Option<String>,
     #[serde(default)]
     tags: Option<Vec<String>>,
+    // a API manda esse campo dentro do snippet: live | upcoming | none
+    #[serde(default)]
+    liveBroadcastContent: Option<String>,
 }
 
 fn client() -> reqwest::blocking::Client {
@@ -169,7 +173,7 @@ pub fn get_videos(token: &str, ids: &[String]) -> Result<Vec<Video>> {
         let resp = client()
             .get(format!("{}/videos", API))
             .bearer_auth(token)
-            .query(&[("part", "snippet"), ("id", joined.as_str())])
+            .query(&[("part", "snippet,liveStreamingDetails"), ("id", joined.as_str())])
             .send()
             .context("falha ao buscar detalhes dos videos")?;
         let v: VideosResponse = serde_json::from_value(check(resp)?.into())
@@ -182,21 +186,27 @@ pub fn get_videos(token: &str, ids: &[String]) -> Result<Vec<Video>> {
                 category_id: it.snippet.categoryId,
                 published_at: it.snippet.publishedAt,
                 tags: it.snippet.tags,
-                kind: classify_kind(&it.live_broadcast_content, &it.snippet.title, &it.snippet.description),
+                kind: classify_kind(
+                    &it.snippet.liveBroadcastContent,
+                    it.liveStreamingDetails.is_some(),
+                    &it.snippet.title,
+                    &it.snippet.description,
+                ),
             });
         }
     }
     Ok(out)
 }
 
-fn classify_kind(live: &Option<String>, title: &str, desc: &str) -> String {
-    match live.as_deref().unwrap_or("none") {
-        "live" | "upcoming" => return "live".to_string(),
-        _ => {}
+// Define o tipo do video: live (ao vivo, agendada ou que ja terminou), shorts ou upload
+fn classify_kind(live: &Option<String>, foi_live: bool, title: &str, desc: &str) -> String {
+    // live acontecendo/agendada ou live que ja terminou (tem liveStreamingDetails)
+    if foi_live || matches!(live.as_deref(), Some("live") | Some("upcoming")) {
+        return "live".to_string();
     }
     let combined = format!("{} {}", title, desc).to_lowercase();
-    // heurística simples para Shorts
-    if combined.contains("#shorts") || combined.contains("shorts") {
+    // shorts so quando tiver a hashtag, a palavra solta pegava video normal
+    if combined.contains("#shorts") {
         return "shorts".to_string();
     }
     "upload".to_string()

@@ -96,15 +96,16 @@ export default function App() {
     }
   };
 
-  const visible = proposals.filter((p) => {
-    if (filter === "all" || filter === "pending" || filter === "approved" || filter === "rejected" || filter === "applied") {
-      return filter === "all" || p.status === filter;
-    }
-    const v = videos.find((x) => x.id === p.video_id);
-    if (filter === "upload") return v?.kind === "upload" || v?.kind === "";
-    if (filter === "live") return v?.kind === "live";
-    return v?.kind !== "upload" && v?.kind !== "live" && v?.kind !== "";
-  });
+  // abas de status filtram sugestões; abas de tipo (vídeos/ao vivo/outros) filtram os vídeos
+  const isStatusFilter = (f: string) => ["pending", "approved", "rejected", "applied"].includes(f);
+  const visible: Row[] =
+    filter === "all" || isStatusFilter(filter)
+      ? proposals
+          .filter((p) => filter === "all" || p.status === filter)
+          .map((p) => ({ id: p.video_id, title: p.original_title, kind: videos.find((x) => x.id === p.video_id)?.kind, p }))
+      : videos
+          .filter((v) => matchKind(filter, v.kind))
+          .map((v) => ({ id: v.id, title: v.title, kind: v.kind, p: proposals.find((x) => x.video_id === v.id) }));
   const approvedCount = proposals.filter((p) => p.status === "approved").length;
 
   return (
@@ -184,43 +185,49 @@ export default function App() {
           <Empty hasVideos={videos.length > 0} onPull={handlePull} disabled={!!busy} />
         ) : (
           <ul className="list">
-            {visible.map((p) => (
-              <li key={p.video_id} className={`row ${p.status}`}>
+            {visible.map(({ id, title, kind, p }) => (
+              <li key={id} className={`row ${p?.status ?? ""}`}>
                 <div className="original">
                   <span className="tag">Atual</span>
-                  <span>{p.original_title}</span>
-                  {videos.find((x) => x.id === p.video_id)?.kind && (
-                    <span className="meta">
-                      tipo: {videos.find((x) => x.id === p.video_id)!.kind}
-                    </span>
-                  )}
+                  <span>{title}</span>
+                  {kind && <span className="meta">tipo: {kind}</span>}
                 </div>
-                <div className="proposed">
-                  <span className="tag">Sugerido</span>
-                  <input
-                    value={p.proposed_title}
-                    maxLength={100}
-                    onChange={(e) => editTitle(p.video_id, e.target.value)}
-                  />
-                  <span className="count">{p.proposed_title.length}/100</span>
-                </div>
-                <div className="actions">
-                  <span className={`badge ${p.status}`}>{labelForFilter(p.status)}</span>
-                  <button
-                    className="ok"
-                    disabled={p.status === "approved" || p.status === "applied"}
-                    onClick={() => changeStatus(p.video_id, "approved")}
-                  >
-                    Aprovar
-                  </button>
-                  <button
-                    className="no"
-                    disabled={p.status === "rejected"}
-                    onClick={() => changeStatus(p.video_id, "rejected")}
-                  >
-                    Rejeitar
-                  </button>
-                </div>
+                {p ? (
+                  <>
+                    <div className="proposed">
+                      <span className="tag">Sugerido</span>
+                      <input
+                        value={p.proposed_title}
+                        maxLength={100}
+                        onChange={(e) => editTitle(p.video_id, e.target.value)}
+                      />
+                      <span className="count">{p.proposed_title.length}/100</span>
+                    </div>
+                    <div className="actions">
+                      <span className={`badge ${p.status}`}>{labelForFilter(p.status)}</span>
+                      <button
+                        className="ok"
+                        disabled={p.status === "approved" || p.status === "applied"}
+                        onClick={() => changeStatus(p.video_id, "approved")}
+                      >
+                        Aprovar
+                      </button>
+                      <button
+                        className="no"
+                        disabled={p.status === "rejected"}
+                        onClick={() => changeStatus(p.video_id, "rejected")}
+                      >
+                        Rejeitar
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  // vídeo ainda sem sugestão: aparece na lista para o usuário saber que existe
+                  <div className="proposed">
+                    <span className="tag">Sem sugestão</span>
+                    <span className="meta">clique em "Gerar sugestões"</span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -262,12 +269,17 @@ function countFor(
   if (f === "pending" || f === "approved" || f === "rejected" || f === "applied") {
     return proposals.filter((p) => p.status === f).length;
   }
-  return proposals.filter((p) => {
-    const v = videos.find((x) => x.id === p.video_id);
-    if (f === "upload") return v?.kind === "upload" || v?.kind === "";
-    if (f === "live") return v?.kind === "live";
-    return v?.kind !== "upload" && v?.kind !== "live" && v?.kind !== "";
-  }).length;
+  // abas de tipo contam todos os vídeos puxados, com ou sem sugestão
+  return videos.filter((v) => matchKind(f, v.kind)).length;
+}
+
+type Row = { id: string; title: string; kind?: string; p?: Proposal };
+
+// Diz se o tipo do vídeo bate com a aba (upload vazio conta como vídeo normal)
+function matchKind(f: string, kind: string): boolean {
+  if (f === "upload") return kind === "upload" || kind === "";
+  if (f === "live") return kind === "live";
+  return kind !== "upload" && kind !== "live" && kind !== "";
 }
 
 function Pill({ ok, label }: { ok?: boolean; label: string }) {

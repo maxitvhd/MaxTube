@@ -160,30 +160,14 @@ async fn generate(
         let template = cfg.read_prompt()?;
 
         let mut proposals = if redo { Vec::new() } else { store::load_proposals(&cfg)? };
-        let mut existing: std::collections::HashSet<String> = proposals
-            .iter()
-            .filter(|p| p.status == store::Status::Applied)
-            .map(|p| p.video_id.clone())
-            .collect();
-        // também pula quem já tem proposta qualquer status, exceto se redo + não aplicado? mudamos: pula só aplicado
-        // mas queremos não gerar de novo se já gerado e não aplicado? usuário quer revisar um por um
-        // regra: não alterar mais de uma vez = pular se já foi aplicado (status Applied)
-        // para não perder revisões pendentes, NÃO pula Pending/Approved/Rejected a menos que redo
-        if !redo {
-            // não gera de novo para quem já tem proposta não-aplicada? evita reprocessar
-            let has_proposal: std::collections::HashSet<String> = proposals
-                .iter()
-                .filter(|p| p.status != store::Status::Applied)
-                .map(|p| p.video_id.clone())
-                .collect();
-            // adiciona no existing para pular
-            for id in has_proposal {
-                existing.insert(id);
-            }
-        }
+        // pula videos que ja tem sugestao (sem "refazer" nao gera de novo nem perde revisao)
+        let existing: std::collections::HashSet<String> =
+            proposals.iter().map(|p| p.video_id.clone()).collect();
+        // conta as falhas do Ollama para avisar no final em vez de esconder
+        let mut falhas = 0usize;
+        let mut ultimo_erro = String::new();
 
         for v in &videos {
-            // pula se já tem proposta (qualquer status)
             if existing.contains(&v.id) {
                 continue;
             }
@@ -193,6 +177,8 @@ async fn generate(
             match ollama::generate(&cfg.ollama_url, &model, &prompt) {
                 Ok(title) => {
                     if title.trim().is_empty() {
+                        falhas += 1;
+                        ultimo_erro = "Ollama devolveu titulo vazio".into();
                         continue;
                     }
                     proposals.push(Proposal {
@@ -204,10 +190,21 @@ async fn generate(
                     });
                     let _ = store::save_proposals(&cfg, &proposals);
                 }
-                Err(_) => continue,
+                Err(e) => {
+                    falhas += 1;
+                    ultimo_erro = format!("{:#}", e);
+                }
             }
         }
         store::save_proposals(&cfg, &proposals)?;
+        if falhas > 0 {
+            anyhow::bail!(
+                "{} sugestoes geradas, {} falharam no Ollama. Ultimo erro: {}",
+                proposals.len(),
+                falhas,
+                ultimo_erro
+            );
+        }
         Ok(proposals)
     })
     .await
