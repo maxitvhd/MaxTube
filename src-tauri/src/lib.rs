@@ -154,10 +154,30 @@ async fn generate(
         let template = cfg.read_prompt()?;
 
         let mut proposals = if redo { Vec::new() } else { store::load_proposals(&cfg)? };
-        let existing: std::collections::HashSet<String> =
-            proposals.iter().map(|p| p.video_id.clone()).collect();
+        let mut existing: std::collections::HashSet<String> = proposals
+            .iter()
+            .filter(|p| p.status == store::Status::Applied)
+            .map(|p| p.video_id.clone())
+            .collect();
+        // também pula quem já tem proposta qualquer status, exceto se redo + não aplicado? mudamos: pula só aplicado
+        // mas queremos não gerar de novo se já gerado e não aplicado? usuário quer revisar um por um
+        // regra: não alterar mais de uma vez = pular se já foi aplicado (status Applied)
+        // para não perder revisões pendentes, NÃO pula Pending/Approved/Rejected a menos que redo
+        if !redo {
+            // não gera de novo para quem já tem proposta não-aplicada? evita reprocessar
+            let has_proposal: std::collections::HashSet<String> = proposals
+                .iter()
+                .filter(|p| p.status != store::Status::Applied)
+                .map(|p| p.video_id.clone())
+                .collect();
+            // adiciona no existing para pular
+            for id in has_proposal {
+                existing.insert(id);
+            }
+        }
 
         for v in &videos {
+            // pula se já tem proposta (qualquer status)
             if existing.contains(&v.id) {
                 continue;
             }

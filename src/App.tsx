@@ -11,7 +11,7 @@ export default function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<Msg>(null);
   const [settings, setSettings] = useState(false);
-  const [limit, setLimit] = useState<string>("20");
+  const [limit, setLimit] = useState<string>("200");
   const [redo, setRedo] = useState(false);
   const [filter, setFilter] = useState<"all" | Status>("all");
 

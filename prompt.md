@@ -28,4 +28,4 @@ Missões, Ceia, Curso DNA etc.) ou o texto bíblico base, use essas informaçõe
 
 ### SAÍDA:
 Responda APENAS com o TÍTULO FINAL otimizado, em UMA ÚNICA LINHA, seguindo a estrutura padrão.
-Sem aspas, sem explicações, sem listas e sem seções numeradas. No máximo 80 caracteres.
+Sem aspas, sem explicações, sem listas e sem seções numeradas. Use até 95 caracteres (priorize entre 70 e 95). Não resuma excessivamente o tema original.
