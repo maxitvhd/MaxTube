@@ -189,15 +189,17 @@ pub fn get_videos(token: &str, ids: &[String]) -> Result<Vec<Video>> {
     Ok(out)
 }
 
-fn classify_kind(live: &Option<String>, _title: &str, _desc: &str) -> String {
+fn classify_kind(live: &Option<String>, title: &str, desc: &str) -> String {
     match live.as_deref().unwrap_or("none") {
-        "live" | "upcoming" => "live".to_string(),
-        "none" => {
-            // heuristica simples: shorts geralmente tem vertical; fallback 'upload'
-            "upload".to_string()
-        }
-        _ => "other".to_string(),
+        "live" | "upcoming" => return "live".to_string(),
+        _ => {}
     }
+    let combined = format!("{} {}", title, desc).to_lowercase();
+    // heurística simples para Shorts
+    if combined.contains("#shorts") || combined.contains("shorts") {
+        return "shorts".to_string();
+    }
+    "upload".to_string()
 }
 
 /// Atualiza o titulo de um video.
