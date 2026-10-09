@@ -17,6 +17,8 @@ pub struct Video {
     pub published_at: Option<String>,
     #[serde(default)]
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub kind: String, // upload | live | shorts | other
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,6 +71,8 @@ struct VideosResponse {
 struct VideoResource {
     id: String,
     snippet: VideoSnippet,
+    #[serde(rename = "liveBroadcastContent", default)]
+    live_broadcast_content: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -173,15 +177,27 @@ pub fn get_videos(token: &str, ids: &[String]) -> Result<Vec<Video>> {
         for it in v.items {
             out.push(Video {
                 id: it.id,
-                title: it.snippet.title,
-                description: it.snippet.description,
+                title: it.snippet.title.clone(),
+                description: it.snippet.description.clone(),
                 category_id: it.snippet.categoryId,
                 published_at: it.snippet.publishedAt,
                 tags: it.snippet.tags,
+                kind: classify_kind(&it.live_broadcast_content, &it.snippet.title, &it.snippet.description),
             });
         }
     }
     Ok(out)
+}
+
+fn classify_kind(live: &Option<String>, _title: &str, _desc: &str) -> String {
+    match live.as_deref().unwrap_or("none") {
+        "live" | "upcoming" => "live".to_string(),
+        "none" => {
+            // heuristica simples: shorts geralmente tem vertical; fallback 'upload'
+            "upload".to_string()
+        }
+        _ => "other".to_string(),
+    }
 }
 
 /// Atualiza o titulo de um video.
