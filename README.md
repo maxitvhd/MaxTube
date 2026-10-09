@@ -31,8 +31,17 @@ Garanta que o Ollama está rodando (abra o app ou `ollama serve`).
    adicione a sua conta em **Usuários de teste**.
 4. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth**:
    - Tipo: **App para computador (Desktop app)**
-   - Baixe o JSON e salve como `.secrets/client_secret.json` na raiz do projeto.
-5. Faça login pela ferramenta:
+   - Baixe o JSON (ou copie o `client_id` e o `client_secret`).
+5. Informe as credenciais e faça login. Duas opções:
+
+**Painel web (recomendado):** abre uma página local onde você cola o JSON (ou os
+campos) e clica em "Fazer login com Google".
+
+```bash
+cargo run -- panel
+```
+
+**Linha de comando:** salve o JSON em `.secrets/client_secret.json` e rode:
 
 ```bash
 cargo run -- auth
@@ -53,6 +62,7 @@ cargo run -- generate            # cria sugestões com o Ollama (data/proposals.
 cargo run -- review              # revisão interativa, uma por uma
 cargo run -- apply               # envia os títulos aprovados ao YouTube
 cargo run -- status              # mostra o estado atual
+cargo run -- panel               # painel web para credenciais e login
 ```
 
 Durante a revisão:

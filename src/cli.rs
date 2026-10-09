@@ -15,6 +15,8 @@ pub struct Cli {
 pub enum Command {
     /// Faz login OAuth na sua conta do YouTube (abre o navegador)
     Auth,
+    /// Abre um painel web local para colar as credenciais e fazer login
+    Panel,
     /// Baixa os videos do canal para data/videos.json
     Pull {
         /// Limite de videos a puxar (padrao: todos)

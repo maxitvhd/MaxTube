@@ -2,6 +2,7 @@ mod auth;
 mod cli;
 mod config;
 mod ollama;
+mod panel;
 mod review;
 mod store;
 mod youtube;
@@ -31,6 +32,7 @@ fn run() -> Result<()> {
         Command::Auth => {
             auth::login(&cfg)?;
         }
+        Command::Panel => panel::run(&cfg)?,
         Command::Pull { limit } => do_pull(&cfg, limit)?,
         Command::Generate { model, redo } => do_generate(&cfg, model, redo)?,
         Command::Review => review::run(&cfg)?,

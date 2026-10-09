@@ -45,7 +45,7 @@ fn now_unix() -> i64 {
 }
 
 /// Extrai client_id e client_secret do JSON baixado do Google Cloud.
-fn load_client(path: &str) -> Result<(String, String)> {
+pub fn load_client(path: &str) -> Result<(String, String)> {
     let raw = fs::read_to_string(path).with_context(|| {
         format!(
             "nao encontrei {}.\nBaixe o client_secret.json no Google Cloud e coloque nesse caminho.",
@@ -70,6 +70,50 @@ fn load_client(path: &str) -> Result<(String, String)> {
     Ok((client_id, client_secret))
 }
 
+/// Salva um client_secret.json no formato esperado pelo Google (Desktop app).
+pub fn write_client_secret(path: &str, client_id: &str, client_secret: &str) -> Result<()> {
+    let obj = serde_json::json!({
+        "installed": {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": ["http://localhost"]
+        }
+    });
+    if let Some(parent) = Path::new(path).parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).ok();
+        }
+    }
+    fs::write(path, serde_json::to_string_pretty(&obj)?)
+        .with_context(|| format!("nao consegui salvar {}", path))?;
+    Ok(())
+}
+
+/// Aceita o JSON completo do Google, valida e salva.
+pub fn write_client_secret_raw(path: &str, raw: &str) -> Result<()> {
+    let v: Value = serde_json::from_str(raw).context("JSON invalido")?;
+    let node = v
+        .get("installed")
+        .or_else(|| v.get("web"))
+        .ok_or_else(|| anyhow!("JSON sem chave 'installed' ou 'web'"))?;
+    let cid = node
+        .get("client_id")
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| anyhow!("JSON sem client_id"))?;
+    let secret = node
+        .get("client_secret")
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| anyhow!("JSON sem client_secret"))?;
+    write_client_secret(path, cid, secret)
+}
+
+/// Retorna o client_id atual, se existir.
+pub fn peek_client_id(path: &str) -> Option<String> {
+    load_client(path).ok().map(|(id, _)| id)
+}
+
 pub fn load_token(path: &str) -> Option<Token> {
     let raw = fs::read_to_string(path).ok()?;
     serde_json::from_str(&raw).ok()
@@ -86,7 +130,7 @@ pub fn save_token(path: &str, token: &Token) -> Result<()> {
     Ok(())
 }
 
-fn open_browser(url: &str) {
+pub fn open_browser(url: &str) {
     let cmd = if cfg!(target_os = "macos") {
         "open"
     } else if cfg!(target_os = "windows") {
