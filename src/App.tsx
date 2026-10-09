@@ -205,7 +205,7 @@ export default function App() {
                   <span className="count">{p.proposed_title.length}/100</span>
                 </div>
                 <div className="actions">
-                  <span className={`badge ${p.status}`}>{labelFor(p.status)}</span>
+                  <span className={`badge ${p.status}`}>{labelForFilter(p.status)}</span>
                   <button
                     className="ok"
                     disabled={p.status === "approved" || p.status === "applied"}
@@ -239,8 +239,8 @@ export default function App() {
   );
 }
 
-function labelForFilter(f: any): string {
-  return {
+function labelForFilter(f: "all" | "pending" | "approved" | "rejected" | "applied" | "upload" | "live" | "other" | Status): string {
+  const map: Record<string, string> = {
     all: "Todas",
     pending: "Pendentes",
     approved: "Aprovadas",
@@ -249,7 +249,8 @@ function labelForFilter(f: any): string {
     upload: "Vídeos",
     live: "Ao Vivo",
     other: "Outros",
-  }[f] as string;
+  };
+  return map[f] || String(f);
 }
 
 function countFor(
