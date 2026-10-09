@@ -1,6 +1,0 @@
-model = "qwen3.5:4b"
-ollama_url = "http://192.168.1.23:11434"
-prompt_file = "prompt.md"
-client_secret = ".secrets/client_secret.json"
-token = ".secrets/token.json"
-data_dir = "data"
