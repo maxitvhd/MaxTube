@@ -26,6 +26,8 @@ struct StatusDto {
     approved: usize,
     rejected: usize,
     applied: usize,
+    uploads: usize,
+    lives: usize,
 }
 
 #[derive(Serialize)]
@@ -48,6 +50,8 @@ fn get_status(state: State<'_, AppState>) -> Result<StatusDto, String> {
             Status::Applied => applied += 1,
         }
     }
+    let uploads = videos.iter().filter(|v| v.kind == "upload" || v.kind.is_empty()).count();
+    let lives = videos.iter().filter(|v| v.kind == "live").count();
     Ok(StatusDto {
         logged_in: auth::load_token(&cfg.token).is_some(),
         has_credentials: auth::peek_client_id(&cfg.client_secret).is_some(),
@@ -59,6 +63,8 @@ fn get_status(state: State<'_, AppState>) -> Result<StatusDto, String> {
         approved,
         rejected,
         applied,
+        uploads,
+        lives,
     })
 }
 
